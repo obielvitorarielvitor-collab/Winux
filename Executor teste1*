@@ -1,0 +1,267 @@
+ local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui") 
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui") 
+
+-- ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "Winux2_Remake_ScreenGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui 
+
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 280, 0, 270) -- aumentei mais altura
+frame.Position = UDim2.new(0.5, -140, 0.5, -135)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.BackgroundColor3 = Color3.new(0, 0, 0)
+frame.BorderColor3 = Color3.new(1, 1, 1)
+frame.BorderSizePixel = 2
+frame.Active = true
+frame.Parent = screenGui 
+
+-- Drag
+local dragging, dragStart, startPos = false, nil, nil
+local function updateDrag(input)
+    local delta = input.Position - dragStart
+    frame.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + delta.X,
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    )
+end 
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end) 
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateDrag(input)
+    end
+end) 
+
+-- Title RGB
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 20)
+title.Position = UDim2.new(0, 5, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Winux_2 (Remake)"
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 16
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = frame 
+
+spawn(function()
+    local t = 0
+    while frame.Parent do
+        t += 0.02
+        title.TextColor3 = Color3.new((math.sin(t*2)+1)/2, (math.sin(t*2+2)+1)/2, (math.sin(t*2+4)+1)/2)
+        RunService.Heartbeat:Wait()
+    end
+end) 
+
+-- Botão X
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 20, 0, 20)
+closeBtn.Position = UDim2.new(1, -20, 0, 0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.TextSize = 14
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.Parent = frame
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end) 
+
+-- TextBox
+local textbox = Instance.new("TextBox")
+textbox.Size = UDim2.new(1, -10, 0, 120)
+textbox.Position = UDim2.new(0, 5, 0, 25)
+textbox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+textbox.BorderSizePixel = 1
+textbox.Text = ""
+textbox.PlaceholderText = "Digite seu código Lua aqui"
+textbox.TextColor3 = Color3.new(1, 1, 1)
+textbox.Font = Enum.Font.Code
+textbox.TextSize = 14
+textbox.ClearTextOnFocus = false
+textbox.MultiLine = true
+textbox.TextWrapped = true
+textbox.TextXAlignment = Enum.TextXAlignment.Left
+textbox.TextYAlignment = Enum.TextYAlignment.Top
+textbox.ClipsDescendants = true
+textbox.Parent = frame 
+
+-- Lista de scripts salvos
+local savedScripts = {} 
+
+-- Função para atualizar o Menu
+local function updateMenu(menuFrame)
+    menuFrame:ClearAllChildren() 
+
+    local menuLabel = Instance.new("TextLabel")
+    menuLabel.Size = UDim2.new(1, 0, 0, 25)
+    menuLabel.BackgroundTransparency = 1
+    menuLabel.Text = "📜 Scripts Salvos"
+    menuLabel.Font = Enum.Font.SourceSansBold
+    menuLabel.TextSize = 16
+    menuLabel.TextColor3 = Color3.new(1,1,1)
+    menuLabel.Parent = menuFrame 
+
+    local y = 30
+    for i, scriptData in ipairs(savedScripts) do
+        local scriptBtn = Instance.new("TextButton")
+        scriptBtn.Size = UDim2.new(0.7, -5, 0, 25)
+        scriptBtn.Position = UDim2.new(0, 5, 0, y)
+        scriptBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        scriptBtn.Text = scriptData.name
+        scriptBtn.Font = Enum.Font.SourceSans
+        scriptBtn.TextSize = 14
+        scriptBtn.TextColor3 = Color3.new(1,1,1)
+        scriptBtn.Parent = menuFrame 
+
+        scriptBtn.MouseButton1Click:Connect(function()
+            textbox.Text = scriptData.code
+        end) 
+
+        local runBtn = Instance.new("TextButton")
+        runBtn.Size = UDim2.new(0.25, -5, 0, 25)
+        runBtn.Position = UDim2.new(0.75, 0, 0, y)
+        runBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        runBtn.Text = "▶"
+        runBtn.Font = Enum.Font.SourceSansBold
+        runBtn.TextSize = 14
+        runBtn.TextColor3 = Color3.new(1,1,1)
+        runBtn.Parent = menuFrame 
+
+        runBtn.MouseButton1Click:Connect(function()
+            local func, err = loadstring(scriptData.code)
+            if func then
+                local success, runtimeErr = pcall(func)
+                if success then
+                    print("Script executado com sucesso!")
+                else
+                    warn("Erro ao executar:", runtimeErr)
+                end
+            else
+                warn("Erro ao compilar:", err)
+            end
+        end) 
+
+        y = y + 30
+    end
+end 
+
+-- Botões principais
+local execBtn = Instance.new("TextButton")
+execBtn.Size = UDim2.new(0.25, -5, 0, 30)
+execBtn.Position = UDim2.new(0, 5, 1, -105)
+execBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+execBtn.Text = "Executar"
+execBtn.Font = Enum.Font.SourceSansBold
+execBtn.TextSize = 14
+execBtn.TextColor3 = Color3.new(1, 1, 1)
+execBtn.Parent = frame
+execBtn.MouseButton1Click:Connect(function()
+    local code = textbox.Text
+    if code ~= "" and loadstring then
+        local func, err = loadstring(code)
+        if func then
+            local success, runtimeErr = pcall(func)
+            if success then
+                print("Código executado com sucesso!")
+            else
+                warn("Erro ao executar:", runtimeErr)
+            end
+        else
+            warn("Erro ao compilar:", err)
+        end
+    else
+        warn("Código vazio ou loadstring desativado.")
+    end
+end) 
+
+local consoleBtn = Instance.new("TextButton")
+consoleBtn.Size = UDim2.new(0.25, -5, 0, 30)
+consoleBtn.Position = UDim2.new(0.25, 0, 1, -105)
+consoleBtn.BackgroundColor3 = Color3.fromRGB(0, 85, 170)
+consoleBtn.Text = "Console"
+consoleBtn.Font = Enum.Font.SourceSansBold
+consoleBtn.TextSize = 14
+consoleBtn.TextColor3 = Color3.new(1, 1, 1)
+consoleBtn.Parent = frame
+consoleBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        StarterGui:SetCore("DevConsoleVisible", true)
+    end)
+end) 
+
+local clearBtn = Instance.new("TextButton")
+clearBtn.Size = UDim2.new(0.25, -5, 0, 30)
+clearBtn.Position = UDim2.new(0.5, 0, 1, -105)
+clearBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+clearBtn.Text = "Clear"
+clearBtn.Font = Enum.Font.SourceSansBold
+clearBtn.TextSize = 14
+clearBtn.TextColor3 = Color3.new(1, 1, 1)
+clearBtn.Parent = frame
+clearBtn.MouseButton1Click:Connect(function()
+    textbox.Text = ""
+end) 
+
+local saveBtn = Instance.new("TextButton")
+saveBtn.Size = UDim2.new(0.25, -5, 0, 30)
+saveBtn.Position = UDim2.new(0.75, 0, 1, -105)
+saveBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
+saveBtn.Text = "Salvar"
+saveBtn.Font = Enum.Font.SourceSansBold
+saveBtn.TextSize = 14
+saveBtn.TextColor3 = Color3.new(1, 1, 1)
+saveBtn.Parent = frame
+saveBtn.MouseButton1Click:Connect(function()
+    if textbox.Text ~= "" then
+        table.insert(savedScripts, {name = "Script "..#savedScripts+1, code = textbox.Text})
+        print("Script salvo!")
+        updateMenu(menuFrame)
+    end
+end) 
+
+-- Botão Menu
+local menuBtn = Instance.new("TextButton")
+menuBtn.Size = UDim2.new(1, -10, 0, 30)
+menuBtn.Position = UDim2.new(0, 5, 1, -35)
+menuBtn.BackgroundColor3 = Color3.fromRGB(150, 75, 0)
+menuBtn.Text = "Menu"
+menuBtn.Font = Enum.Font.SourceSansBold
+menuBtn.TextSize = 14
+menuBtn.TextColor3 = Color3.new(1, 1, 1)
+menuBtn.Parent = frame 
+
+-- Frame do Menu
+local menuFrame = Instance.new("Frame")
+menuFrame.Size = UDim2.new(0, 200, 0, 180)
+menuFrame.Position = UDim2.new(1, 10, 0, 25)
+menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+menuFrame.BorderSizePixel = 2
+menuFrame.Visible = false
+menuFrame.Parent = frame 
+
+menuBtn.MouseButton1Click:Connect(function()
+    menuFrame.Visible = not menuFrame.Visible
+    if menuFrame.Visible then
+        updateMenu(menuFrame)
+    end
+end)
